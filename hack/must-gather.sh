@@ -118,6 +118,52 @@ fi
 
 echo
 echo "#"
+echo "# GPUCluster"
+echo "#"
+echo
+
+GPU_CLUSTER_NAME=$($K get gpuclusters.nvidia.com -oname --ignore-not-found)
+
+if [[ "${GPU_CLUSTER_NAME}" ]]; then
+    echo "Get ${GPU_CLUSTER_NAME}"
+    $K get -oyaml "${GPU_CLUSTER_NAME}" > "${ARTIFACT_DIR}/gpu_cluster.yaml"
+else
+    echo "GPUCluster resource(s) not found in the cluster."
+fi
+
+echo
+echo "#"
+echo "# DRA resources (NVIDIA DRA Driver for GPUs)"
+echo "#"
+echo
+
+# DeviceClasses are cluster-scoped; gather all of them for context.
+DEVICE_CLASSES=$($K get deviceclasses.resource.k8s.io -oname --ignore-not-found)
+
+if [[ "${DEVICE_CLASSES}" ]]; then
+    echo "Get DeviceClass resources"
+    $K get deviceclasses.resource.k8s.io -oyaml > "${ARTIFACT_DIR}/deviceclasses.yaml"
+else
+    echo "DeviceClass resource(s) not found in the cluster."
+fi
+
+# ResourceSlices are published per-driver; limit to the NVIDIA GPU DRA driver.
+NVIDIA_DRA_DRIVER="gpu.nvidia.com"
+RESOURCE_SLICES=$($K get resourceslices.resource.k8s.io \
+    --field-selector "spec.driver=${NVIDIA_DRA_DRIVER}" \
+    -oname --ignore-not-found)
+
+if [[ "${RESOURCE_SLICES}" ]]; then
+    echo "Get ResourceSlice resources for driver ${NVIDIA_DRA_DRIVER}"
+    $K get resourceslices.resource.k8s.io \
+        --field-selector "spec.driver=${NVIDIA_DRA_DRIVER}" \
+        -oyaml > "${ARTIFACT_DIR}/resourceslices.yaml"
+else
+    echo "ResourceSlice resource(s) for driver ${NVIDIA_DRA_DRIVER} not found in the cluster."
+fi
+
+echo
+echo "#"
 echo "# Nodes and machines"
 echo "#"
 echo
